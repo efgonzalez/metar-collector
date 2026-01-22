@@ -1,0 +1,25 @@
+[Unit]
+Description=METAR Data Collector for La Gomera Airport
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=edu
+Group=edu
+WorkingDirectory=/home/edu/metar-collector
+Environment="CHECKWX_API_KEY=YOUR_API_KEY_HERE"
+ExecStart=/home/edu/metar-collector/venv/bin/python3 /home/edu/metar-collector/metar_collector.py
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=metar-collector
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=false
+ReadWritePaths=/home/edu/metar-collector
+
+[Install]
+WantedBy=multi-user.target

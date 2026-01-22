@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GCGM Wind Data Explorer 2025</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@3.0.6/index.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .chart-container.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .chart-title {
+            font-size: 1.4em;
+            color: #333;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        label {
+            font-size: 0.9em;
+            color: #666;
+            font-weight: 500;
+        }
+
+        input[type="date"], select {
+            padding: 10px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        input[type="date"]:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 500;
+            transition: transform 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: white;
+            font-size: 1.3em;
+        }
+
+        canvas {
+            max-height: 400px;
+        }
+
+        .info-text {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 10px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌬️ GCGM Wind Data Explorer</h1>
+            <p class="subtitle">La Gomera Airport - 2025 Wind Analysis</p>
+            <div class="stats-grid" id="statsGrid">
+                <div class="loading">Loading data...</div>
+            </div>
+        </header>
+
+        <!-- Daily Wind Chart -->
+        <div class="chart-grid">
+            <div class="chart-container full-width">
+                <h2 class="chart-title">Daily Wind Conditions</h2>
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="dateSelect">Select Date:</label>
+                        <input type="date" id="dateSelect" min="2025-01-01" max="2025-12-31">
+                    </div>
+                    <button onclick="goToToday()">Today</button>
+                    <button onclick="previousDay()">← Previous Day</button>
+                    <button onclick="nextDay()">Next Day →</button>
+                </div>
+                <canvas id="dailyChart"></canvas>
+                <p class="info-text" id="dailyInfo"></p>
+            </div>
+        </div>
+
+        <!-- Weekly and Hourly Averages -->
+        <div class="chart-grid">
+            <div class="chart-container">
+                <h2 class="chart-title">Weekly Average Wind Speed</h2>
+                <canvas id="weeklyChart"></canvas>
+                <p class="info-text">Average wind speed by week throughout 2025</p>
+            </div>
+
+            <div class="chart-container">
+                <h2 class="chart-title">Wind by Time of Day</h2>
+                <canvas id="hourlyChart"></canvas>
+                <p class="info-text">Average wind speed at different times across the year</p>
+            </div>
+        </div>
+
+        <!-- Wind Direction and Speed Distribution -->
+        <div class="chart-grid">
+            <div class="chart-container">
+                <h2 class="chart-title">Wind Direction Distribution</h2>
+                <canvas id="directionChart"></canvas>
+                <p class="info-text">Frequency of wind from each direction</p>
+            </div>
+
+            <div class="chart-container">
+                <h2 class="chart-title">Wind Speed Distribution</h2>
+                <canvas id="speedDistChart"></canvas>
+                <p class="info-text">Distribution of wind speeds throughout the year</p>
+            </div>
+        </div>
+
+        <!-- Monthly Comparison -->
+        <div class="chart-grid">
+            <div class="chart-container full-width">
+                <h2 class="chart-title">Monthly Wind Patterns</h2>
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="monthSelect">Select Month:</label>
+                        <select id="monthSelect">
+                            <option value="all">All Months</option>
+                            <option value="0">January</option>
+                            <option value="1">February</option>
+                            <option value="2">March</option>
+                            <option value="3">April</option>
+                            <option value="4">May</option>
+                            <option value="5">June</option>
+                            <option value="6">July</option>
+                            <option value="7">August</option>
+                            <option value="8">September</option>
+                            <option value="9">October</option>
+                            <option value="10">November</option>
+                            <option value="11">December</option>
+                        </select>
+                    </div>
+                </div>
+                <canvas id="monthlyChart"></canvas>
+                <p class="info-text">Wind speed patterns by hour for selected month</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let windData = [];
+        let charts = {};
+
+        // Load and parse CSV data
+        async function loadData() {
+            try {
+                const response = await fetch('gcgm_wind_data_2025.csv');
+                const text = await response.text();
+                const lines = text.split('\n');
+                const headers = lines[0].split(',');
+
+                windData = lines.slice(1)
+                    .filter(line => line.trim())
+                    .map(line => {
+                        const values = line.split(',');
+                        return {
+                            datetime_local: values[0],
+                            datetime_utc: values[1],
+                            wind_direction: values[2],
+                            sustained_speed_kt: parseFloat(values[3]),
+                            sustained_speed_kmh: parseFloat(values[4]),
+                            date: values[0].split(' ')[0],
+                            time: values[0].split(' ')[1],
+                            hour: parseInt(values[0].split(' ')[1].split(':')[0])
+                        };
+                    })
+                    .filter(d => !isNaN(d.sustained_speed_kt));
+
+                console.log(`Loaded ${windData.length} observations`);
+                updateStats();
+                initializeCharts();
+
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('statsGrid').innerHTML = '<div style="color: red;">Error loading data</div>';
+            }
+        }
+
+        // Update statistics
+        function updateStats() {
+            const speeds = windData.map(d => d.sustained_speed_kt);
+            const avg = speeds.reduce((a, b) => a + b, 0) / speeds.length;
+            const max = Math.max(...speeds);
+            const min = Math.min(...speeds.filter(s => s > 0));
+
+            const statsHTML = `
+                <div class="stat-card">
+                    <div class="stat-value">${windData.length}</div>
+                    <div class="stat-label">Total Observations</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${avg.toFixed(1)} kt</div>
+                    <div class="stat-label">Average Wind</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${max.toFixed(1)} kt</div>
+                    <div class="stat-label">Maximum Wind</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${min.toFixed(1)} kt</div>
+                    <div class="stat-label">Minimum Wind</div>
+                </div>
+            `;
+
+            document.getElementById('statsGrid').innerHTML = statsHTML;
+        }
+
+        // Initialize all charts
+        function initializeCharts() {
+            createDailyChart();
+            createWeeklyChart();
+            createHourlyChart();
+            createDirectionChart();
+            createSpeedDistChart();
+            createMonthlyChart();
+
+            // Set up date selector
+            const dateSelect = document.getElementById('dateSelect');
+            dateSelect.value = windData[windData.length - 1].date;
+            dateSelect.addEventListener('change', updateDailyChart);
+
+            // Set up month selector
+            document.getElementById('monthSelect').addEventListener('change', updateMonthlyChart);
+
+            updateDailyChart();
+        }
+
+        // Daily wind chart
+        function createDailyChart() {
+            const ctx = document.getElementById('dailyChart').getContext('2d');
+            charts.daily = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Wind Speed (kt)',
+                        data: [],
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: true
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Wind: ${context.parsed.y.toFixed(1)} kt (${(context.parsed.y * 1.852).toFixed(1)} km/h)`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Wind Speed (knots)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time of Day'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateDailyChart() {
+            const selectedDate = document.getElementById('dateSelect').value;
+            const dayData = windData.filter(d => d.date === selectedDate);
+
+            charts.daily.data.labels = dayData.map(d => d.time);
+            charts.daily.data.datasets[0].data = dayData.map(d => d.sustained_speed_kt);
+            charts.daily.update();
+
+            const avg = dayData.length > 0 ?
+                (dayData.reduce((sum, d) => sum + d.sustained_speed_kt, 0) / dayData.length).toFixed(1) : 0;
+
+            document.getElementById('dailyInfo').textContent =
+                `${dayData.length} observations on ${selectedDate} | Average: ${avg} kt (${(avg * 1.852).toFixed(1)} km/h)`;
+        }
+
+        // Weekly average chart
+        function createWeeklyChart() {
+            const weeklyData = {};
+
+            windData.forEach(d => {
+                const date = new Date(d.date);
+                const weekNum = getWeekNumber(date);
+                if (!weeklyData[weekNum]) {
+                    weeklyData[weekNum] = [];
+                }
+                weeklyData[weekNum].push(d.sustained_speed_kt);
+            });
+
+            const weeks = Object.keys(weeklyData).sort((a, b) => a - b);
+            const averages = weeks.map(w => {
+                const sum = weeklyData[w].reduce((a, b) => a + b, 0);
+                return sum / weeklyData[w].length;
+            });
+
+            const ctx = document.getElementById('weeklyChart').getContext('2d');
+            charts.weekly = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: weeks.map(w => `Week ${w}`),
+                    datasets: [{
+                        label: 'Average Wind Speed (kt)',
+                        data: averages,
+                        backgroundColor: 'rgba(102, 126, 234, 0.6)',
+                        borderColor: '#667eea',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Wind Speed (knots)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Hourly pattern chart
+        function createHourlyChart() {
+            const hourlyData = {};
+
+            for (let h = 0; h < 24; h++) {
+                hourlyData[h] = [];
+            }
+
+            windData.forEach(d => {
+                hourlyData[d.hour].push(d.sustained_speed_kt);
+            });
+
+            const hours = Object.keys(hourlyData).sort((a, b) => a - b);
+            const averages = hours.map(h => {
+                const data = hourlyData[h];
+                return data.length > 0 ? data.reduce((a, b) => a + b, 0) / data.length : 0;
+            });
+
+            const ctx = document.getElementById('hourlyChart').getContext('2d');
+            charts.hourly = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: hours.map(h => `${h.toString().padStart(2, '0')}:00`),
+                    datasets: [{
+                        label: 'Average Wind Speed (kt)',
+                        data: averages,
+                        borderColor: '#764ba2',
+                        backgroundColor: 'rgba(118, 75, 162, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Wind Speed (knots)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Hour of Day'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Wind direction chart
+        function createDirectionChart() {
+            const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+            const directionCounts = new Array(8).fill(0);
+
+            windData.forEach(d => {
+                if (d.wind_direction !== 'VRB') {
+                    const deg = parseInt(d.wind_direction);
+                    const idx = Math.floor(((deg + 22.5) % 360) / 45);
+                    directionCounts[idx]++;
+                }
+            });
+
+            const ctx = document.getElementById('directionChart').getContext('2d');
+            charts.direction = new Chart(ctx, {
+                type: 'polarArea',
+                data: {
+                    labels: directions,
+                    datasets: [{
+                        label: 'Frequency',
+                        data: directionCounts,
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.6)',
+                            'rgba(255, 159, 64, 0.6)',
+                            'rgba(255, 205, 86, 0.6)',
+                            'rgba(75, 192, 192, 0.6)',
+                            'rgba(54, 162, 235, 0.6)',
+                            'rgba(153, 102, 255, 0.6)',
+                            'rgba(201, 203, 207, 0.6)',
+                            'rgba(102, 126, 234, 0.6)'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true
+                }
+            });
+        }
+
+        // Wind speed distribution
+        function createSpeedDistChart() {
+            const bins = [0, 5, 10, 15, 20, 25, 30, 50, 100];
+            const binCounts = new Array(bins.length - 1).fill(0);
+
+            windData.forEach(d => {
+                for (let i = 0; i < bins.length - 1; i++) {
+                    if (d.sustained_speed_kt >= bins[i] && d.sustained_speed_kt < bins[i + 1]) {
+                        binCounts[i]++;
+                        break;
+                    }
+                }
+            });
+
+            const ctx = document.getElementById('speedDistChart').getContext('2d');
+            charts.speedDist = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: bins.slice(0, -1).map((v, i) => `${v}-${bins[i + 1]} kt`),
+                    datasets: [{
+                        label: 'Number of Observations',
+                        data: binCounts,
+                        backgroundColor: 'rgba(118, 75, 162, 0.6)',
+                        borderColor: '#764ba2',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Frequency'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Wind Speed Range'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Monthly patterns chart
+        function createMonthlyChart() {
+            const ctx = document.getElementById('monthlyChart').getContext('2d');
+            charts.monthly = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Wind Speed (kt)',
+                        data: [],
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Average Wind Speed (knots)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Hour of Day'
+                            }
+                        }
+                    }
+                }
+            });
+
+            updateMonthlyChart();
+        }
+
+        function updateMonthlyChart() {
+            const selectedMonth = document.getElementById('monthSelect').value;
+            let filteredData = windData;
+
+            if (selectedMonth !== 'all') {
+                filteredData = windData.filter(d => {
+                    const date = new Date(d.date);
+                    return date.getMonth() === parseInt(selectedMonth);
+                });
+            }
+
+            const hourlyData = {};
+            for (let h = 0; h < 24; h++) {
+                hourlyData[h] = [];
+            }
+
+            filteredData.forEach(d => {
+                hourlyData[d.hour].push(d.sustained_speed_kt);
+            });
+
+            const hours = Object.keys(hourlyData).sort((a, b) => a - b);
+            const averages = hours.map(h => {
+                const data = hourlyData[h];
+                return data.length > 0 ? data.reduce((a, b) => a + b, 0) / data.length : 0;
+            });
+
+            charts.monthly.data.labels = hours.map(h => `${h.toString().padStart(2, '0')}:00`);
+            charts.monthly.data.datasets[0].data = averages;
+            charts.monthly.update();
+        }
+
+        // Helper functions
+        function getWeekNumber(date) {
+            const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+            const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
+            return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+        }
+
+        function goToToday() {
+            const today = new Date().toISOString().split('T')[0];
+            const dateSelect = document.getElementById('dateSelect');
+            if (today >= '2025-01-01' && today <= '2025-12-31') {
+                dateSelect.value = today;
+            } else {
+                // If not in 2025, go to last available date
+                dateSelect.value = windData[windData.length - 1].date;
+            }
+            updateDailyChart();
+        }
+
+        function previousDay() {
+            const dateSelect = document.getElementById('dateSelect');
+            const currentDate = new Date(dateSelect.value);
+            currentDate.setDate(currentDate.getDate() - 1);
+            if (currentDate >= new Date('2025-01-01')) {
+                dateSelect.value = currentDate.toISOString().split('T')[0];
+                updateDailyChart();
+            }
+        }
+
+        function nextDay() {
+            const dateSelect = document.getElementById('dateSelect');
+            const currentDate = new Date(dateSelect.value);
+            currentDate.setDate(currentDate.getDate() + 1);
+            if (currentDate <= new Date('2025-12-31')) {
+                dateSelect.value = currentDate.toISOString().split('T')[0];
+                updateDailyChart();
+            }
+        }
+
+        // Load data on page load
+        loadData();
+    </script>
+</body>
+</html>

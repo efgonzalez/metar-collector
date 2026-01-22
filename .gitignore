@@ -1,0 +1,20 @@
+# Data files
+*.db
+*.csv
+*.json
+*.log
+*.tar.gz
+
+# Virtual environment
+venv/
+
+# macOS artifacts
+._*
+.DS_Store
+
+# Claude Code
+.claude/
+
+# Python
+__pycache__/
+*.pyc
