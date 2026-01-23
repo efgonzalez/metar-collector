@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-METAR Data Collector Service for Canary Islands Airports
+METAR Data Collector Service
 Fetches and stores METAR data in SQLite database with duplicate prevention
 
 Supported airports:
 - GCGM: La Gomera Airport
 - GCLA: La Palma Airport
+- KROW: Roswell Air Center
 """
 
 import sqlite3
@@ -20,7 +21,7 @@ from pathlib import Path
 
 
 # Configuration
-STATIONS = ['GCGM', 'GCLA']  # La Gomera, La Palma
+STATIONS = ['GCGM', 'GCLA', 'KROW']  # La Gomera, La Palma, Roswell
 DB_PATH = 'metar_data.db'
 HOURS_TO_FETCH = 48  # Fetch last 48 hours with overlap to ensure no gaps
 LOG_LEVEL = logging.INFO
