@@ -89,15 +89,11 @@ class METARCollector:
 
     def fetch_metar_data(self, hours_back=HOURS_TO_FETCH):
         """Fetch METAR data from CheckWX API"""
-        end_date = datetime.utcnow()
-        start_date = end_date - timedelta(hours=hours_back)
+        # CheckWX free API only returns the latest METAR
+        # Historical data collection happens over time with scheduled runs
+        url = f"{self.base_url}/{self.station}"
 
-        start_str = start_date.strftime('%Y-%m-%dT%H:%M:%SZ')
-        end_str = end_date.strftime('%Y-%m-%dT%H:%M:%SZ')
-
-        url = f"{self.base_url}/{self.station}/{start_str}/{end_str}"
-
-        logger.info(f"Fetching METAR data for {self.station} from {start_date} to {end_date}")
+        logger.info(f"Fetching current METAR data for {self.station}")
 
         try:
             response = requests.get(url, headers=self.headers, timeout=30)
