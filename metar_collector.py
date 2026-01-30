@@ -7,6 +7,7 @@ Supported airports:
 - GCGM: La Gomera Airport
 - GCLA: La Palma Airport
 - KROW: Roswell Air Center
+- GMMX: Marrakesh Menara Airport
 """
 
 import sqlite3
@@ -21,7 +22,7 @@ from pathlib import Path
 
 
 # Configuration
-STATIONS = ['GCGM', 'GCLA', 'KROW']  # La Gomera, La Palma, Roswell
+STATIONS = ['GCGM', 'GCLA', 'KROW', 'GMMX']  # La Gomera, La Palma, Roswell, Marrakesh
 DB_PATH = 'metar_data.db'
 HOURS_TO_FETCH = 48  # Fetch last 48 hours with overlap to ensure no gaps
 LOG_LEVEL = logging.INFO
